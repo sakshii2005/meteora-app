@@ -1,12 +1,13 @@
 // Service Worker for WeatherGlass PWA
-const CACHE_NAME = 'weatherglass-v1.0.0';
-const STATIC_CACHE_NAME = 'weatherglass-static-v1.0.0';
-const DATA_CACHE_NAME = 'weatherglass-data-v1.0.0';
+const CACHE_NAME = 'weatherglass-v1.0.1';
+const STATIC_CACHE_NAME = 'weatherglass-static-v1.0.1';
+const DATA_CACHE_NAME = 'weatherglass-data-v1.0.1';
 
 // Static assets to cache
 const STATIC_ASSETS = [
     '/',
     '/index.html',
+    '/history.html',
     '/styles.css',
     '/js/main.js',
     '/js/api.js',
@@ -14,6 +15,7 @@ const STATIC_ASSETS = [
     '/js/ui.js',
     '/js/charts.js',
     '/js/utils.js',
+    '/js/history.js',
     '/manifest.webmanifest',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
     'https://cdn.jsdelivr.net/npm/chart.js',
@@ -189,13 +191,24 @@ async function handleStaticAsset(request) {
 
 // Handle app shell (HTML) with cache-first strategy
 async function handleAppShell(request) {
-    const cachedResponse = await caches.match('/index.html');
-    
+    const url = new URL(request.url);
+    const requestedPath = url.pathname === '/' ? '/index.html' : url.pathname;
+
+    // Try to serve the exact requested HTML from cache
+    let cachedResponse = await caches.match(requestedPath);
     if (cachedResponse) {
         return cachedResponse;
     }
-    
-    // Fallback to network
+
+    // Fallback to index.html for other HTML navigations if not cached
+    if (requestedPath !== '/index.html') {
+        cachedResponse = await caches.match('/index.html');
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+    }
+
+    // Finally, try network
     try {
         return await fetch(request);
     } catch (error) {
@@ -208,37 +221,20 @@ async function handleAppShell(request) {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
                     body { 
-                        font-family: Arial, sans-serif; 
-                        display: flex; 
-                        justify-content: center; 
-                        align-items: center; 
-                        height: 100vh; 
-                        margin: 0; 
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        text-align: center;
+                        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif; 
+                        padding: 2rem; 
+                        color: #fff; 
+                        background: #111; 
                     }
-                    .offline-content h1 { margin-bottom: 1rem; }
-                    .offline-content p { margin-bottom: 2rem; }
-                    .retry-btn {
-                        background: rgba(255, 255, 255, 0.2);
-                        border: 1px solid rgba(255, 255, 255, 0.3);
-                        color: white;
-                        padding: 0.5rem 1rem;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-size: 1rem;
-                    }
-                    .retry-btn:hover {
-                        background: rgba(255, 255, 255, 0.3);
-                    }
+                    .box { max-width: 640px; margin: 0 auto; background: #1b1b1b; border-radius: 12px; padding: 1.5rem; border: 1px solid #2a2a2a; }
+                    h1 { margin: 0 0 .5rem; font-size: 1.25rem; }
+                    p { opacity: .8; line-height: 1.5; }
                 </style>
             </head>
             <body>
-                <div class="offline-content">
-                    <h1>⛅ Meteora</h1>
-                    <p>You're currently offline. Please check your connection and try again.</p>
-                    <button class="retry-btn" onclick="window.location.reload()">Retry</button>
+                <div class="box">
+                    <h1>You're offline</h1>
+                    <p>The app shell couldn't be loaded. Please check your connection and try again.</p>
                 </div>
             </body>
             </html>
